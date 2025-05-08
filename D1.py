@@ -1,0 +1,86 @@
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+
+def convolve2d(image, kernel):
+    """Fungsi untuk melakukan konvolusi 2D."""
+    h, w = image.shape
+    kh, kw = kernel.shape
+    pad_h, pad_w = kh // 2, kw // 2
+    padded_img = np.pad(image, ((pad_h, pad_h), (pad_w, pad_w)), mode='constant', constant_values=0)
+    output = np.zeros_like(image, dtype=np.float32)
+
+    for i in range(h):
+        for j in range(w):
+            region = padded_img[i:i+kh, j:j+kw]
+            output[i, j] = np.sum(region * kernel)
+
+    return np.clip(output, 0, 255).astype(np.uint8)
+
+def mean_filter(image):
+    """Pelembutan citra menggunakan mean filter 3x3."""
+    kernel = np.ones((3,3)) / 9.0
+    return convolve2d(image, kernel)
+
+def gaussian_filter(image, sigma=1):
+    """Gaussian filter untuk pelembutan citra."""
+    size = 5  # Ukuran kernel 5x5
+    kernel = np.fromfunction(
+        lambda x, y: (1/(2*np.pi*sigma**2)) * np.exp(-((x-2)**2 + (y-2)**2) / (2*sigma**2)),
+        (size, size)
+    )
+    kernel /= np.sum(kernel)
+    return convolve2d(image, kernel)
+
+def sharpen_filter(image):
+    """Penajaman citra menggunakan kernel high-pass filter."""
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+    return convolve2d(image, kernel)
+
+def median_filter(image):
+    """Filter median untuk menghilangkan noise salt & pepper."""
+    h, w = image.shape
+    output = np.zeros_like(image)
+    for i in range(1, h-1):
+        for j in range(1, w-1):
+            neighbors = image[i-1:i+2, j-1:j+2].flatten()
+            output[i, j] = np.median(neighbors)
+    return output
+
+def max_filter(image):
+    """Filter max untuk mempertahankan nilai piksel terbesar dari tetangga."""
+    h, w = image.shape
+    output = np.zeros_like(image)
+    for i in range(1, h-1):
+        for j in range(1, w-1):
+            neighbors = image[i-1:i+2, j-1:j+2].flatten()
+            output[i, j] = np.max(neighbors)
+    return output
+
+def show_all_filters(image):
+    """Menampilkan hasil filtering dalam satu jendela dengan 6 gambar."""
+    filters = [
+        ("Mean Filter", mean_filter(image)),
+        ("Gaussian Filter", gaussian_filter(image)),
+        ("Sharpen Filter", sharpen_filter(image)),
+        ("Median Filter", median_filter(image)),
+        ("Max Filter", max_filter(image)),
+        ("Original Image", image)
+    ]
+    
+    fig, axes = plt.subplots(2, 3, figsize=(12, 8))  # 2 baris, 3 kolom
+    for ax, (title, img) in zip(axes.flat, filters):
+        ax.imshow(img, cmap='gray')
+        ax.set_title(title)
+        ax.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    img = cv2.imread('noise.png', cv2.IMREAD_GRAYSCALE)
+
+    if img is None:
+        print("Error: Image not found!")
+    else:
+        show_all_filters(img)
